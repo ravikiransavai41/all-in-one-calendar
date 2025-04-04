@@ -1,7 +1,6 @@
-
-import React from 'react';
-import { format, isSameDay, isToday } from 'date-fns';
-import { CalendarEvent, formatEventTime, generateWeekDays, getEventsForDay } from '@/utils/calendarUtils';
+import * as React from 'react';
+import { format, addDays, isSameDay, isToday } from 'date-fns';
+import { CalendarEvent, generateWeekDays, getEventsForDay } from '@/utils/calendarUtils';
 import { cn } from '@/lib/utils';
 
 interface CalendarWeekProps {
@@ -17,89 +16,98 @@ const CalendarWeek: React.FC<CalendarWeekProps> = ({
   onEventClick,
   onDateClick,
 }) => {
-  const weekDays = generateWeekDays(currentDate);
+  const days = generateWeekDays(currentDate);
   
-  // Generate hour slots (from 7am to 9pm)
-  const hours = Array.from({ length: 15 }, (_, i) => i + 7);
+  // Debug logs
+  console.log('CalendarWeek - Received events:', events);
+  console.log('CalendarWeek - Current date:', currentDate);
+  
+  // Generate time slots (24 hours)
+  const timeSlots = Array.from({ length: 24 }, (_, i) => i);
+  
+  // Get all events for the week
+  const weekEvents = days.flatMap(day => getEventsForDay(events, day));
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Day headers */}
-      <div className="grid grid-cols-8 border-b border-border">
-        <div className="p-2 text-center border-r border-border"></div>
-        {weekDays.map((day, index) => {
-          const isCurrentDay = isSameDay(day, currentDate);
-          const isTodayDate = isToday(day);
-          
-          return (
-            <div
-              key={index}
-              className={cn(
-                "p-2 text-center border-r border-border cursor-pointer",
-                isCurrentDay && "bg-calendar-selected",
-                isTodayDate && "font-bold"
-              )}
-              onClick={() => onDateClick(day)}
-            >
-              <div>{format(day, 'EEE')}</div>
-              <div className={cn(
-                "inline-flex items-center justify-center w-7 h-7 rounded-full",
-                isTodayDate && "bg-calendar-primary text-white"
-              )}>
-                {format(day, 'd')}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      
-      {/* Time grid */}
-      <div className="flex-grow overflow-y-auto">
-        {hours.map((hour) => (
-          <div key={hour} className="grid grid-cols-8 border-b border-border min-h-[60px]">
-            <div className="p-1 text-xs text-right pr-2 border-r border-border">
-              {format(new Date().setHours(hour, 0, 0), 'h a')}
-            </div>
-            
-            {weekDays.map((day, dayIndex) => {
-              const hourStart = new Date(day);
-              hourStart.setHours(hour, 0, 0, 0);
-              
-              const hourEnd = new Date(day);
-              hourEnd.setHours(hour + 1, 0, 0, 0);
-              
-              // Find events that start in this hour block
-              const hourEvents = events.filter(event => {
-                const eventStart = new Date(event.start);
-                return (
-                  isSameDay(eventStart, day) && 
-                  eventStart.getHours() === hour
-                );
-              });
-              
-              return (
-                <div 
-                  key={dayIndex} 
-                  className={cn(
-                    "p-1 border-r border-border relative",
-                    isToday(day) && "bg-calendar-today bg-opacity-30"
-                  )}
-                >
-                  {hourEvents.map((event) => (
-                    <div
-                      key={event.id}
-                      className="calendar-event absolute inset-x-1"
-                      style={{ backgroundColor: event.color }}
-                      onClick={() => onEventClick(event)}
-                    >
-                      {formatEventTime(new Date(event.start))} - {event.title}
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
+    <div className="h-full flex flex-col">
+      <div className="grid grid-cols-8 gap-1 py-2 border-b border-border">
+        <div className="text-center font-medium text-sm"></div>
+        {days.map((day, index) => (
+          <div 
+            key={index} 
+            className={cn(
+              "text-center font-medium text-sm cursor-pointer",
+              isToday(day) && "text-blue-600 font-bold",
+              isSameDay(day, currentDate) && "bg-blue-100 rounded"
+            )}
+            onClick={() => onDateClick(day)}
+          >
+            <div>{format(day, 'EEE')}</div>
+            <div>{format(day, 'd')}</div>
           </div>
         ))}
+      </div>
+      
+      <div className="week-grid flex-grow overflow-auto">
+        <div className="grid grid-cols-[60px_repeat(7,1fr)]">
+          {/* Time slots column */}
+          <div className="border-r border-border">
+            {timeSlots.map(hour => (
+              <div key={hour} className="week-time-slot h-[60px] flex items-center justify-end pr-2 text-sm text-muted-foreground">
+                {format(new Date().setHours(hour, 0), 'h a')}
+              </div>
+            ))}
+          </div>
+          
+          {/* Day columns */}
+          {days.map((day, dayIndex) => (
+            <div key={dayIndex} className="relative border-r border-border last:border-r-0">
+              {/* Time slot cells */}
+              {timeSlots.map(hour => (
+                <div key={hour} className="week-day-cell h-[60px] border-b border-border relative">
+                  {/* Empty cell for time slot */}
+                </div>
+              ))}
+              
+              {/* Events for this day */}
+              {getEventsForDay(events, day).map(event => {
+                const startHour = event.start.getHours();
+                const startMinutes = event.start.getMinutes();
+                const endHour = event.end.getHours();
+                const endMinutes = event.end.getMinutes();
+                
+                // Calculate position and height
+                const startPosition = startHour * 60 + startMinutes;
+                const endPosition = endHour * 60 + endMinutes;
+                const duration = endPosition - startPosition;
+                
+                // Ensure minimum height for visibility
+                const height = Math.max(duration, 30);
+                
+                return (
+                  <div
+                    key={event.id}
+                    className="week-event absolute left-1 right-1 rounded-md p-1 text-xs overflow-hidden cursor-pointer"
+                    style={{ 
+                      backgroundColor: event.color || '#2196f3',
+                      color: '#ffffff',
+                      top: `${startPosition}px`,
+                      height: `${height}px`,
+                      zIndex: 10
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEventClick(event);
+                    }}
+                  >
+                    <div className="font-medium">{format(event.start, 'h:mm a')} - {event.title}</div>
+                    {event.location && <div className="text-xs opacity-80">{event.location}</div>}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

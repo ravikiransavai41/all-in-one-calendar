@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: horizon-calendar
+  labels:
+    app: horizon-calendar
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  selector:
+    app: horizon-calendar 
