@@ -3,6 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 const SignInWithMicrosoft: React.FC = () => {
   const { loginWithMS, isLoading } = useAuth();
@@ -12,8 +13,15 @@ const SignInWithMicrosoft: React.FC = () => {
     try {
       setLocalLoading(true);
       await loginWithMS();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Microsoft sign-in error:', error);
+      if (error.message?.includes('redirect URI')) {
+        toast.error('Authentication error: Redirect URI mismatch. Please contact support.');
+      } else if (error.message?.includes('user_cancelled')) {
+        toast.info('Sign-in was cancelled');
+      } else {
+        toast.error('Failed to sign in with Microsoft. Please try again.');
+      }
     } finally {
       setLocalLoading(false);
     }
