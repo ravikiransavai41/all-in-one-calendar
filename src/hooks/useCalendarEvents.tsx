@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 export const useCalendarEvents = (currentDate: Date) => {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [loadedEventCount, setLoadedEventCount] = useState<number>(0);
   const { user } = useAuth();
 
   // Fetch Microsoft events when the component mounts or date changes
@@ -28,6 +29,7 @@ export const useCalendarEvents = (currentDate: Date) => {
         if (msEvents.length > 0) {
           console.log('Retrieved MS events:', msEvents);
           setEvents(msEvents);
+          setLoadedEventCount(msEvents.length);
           
           // Count Teams meetings
           const teamsMeetings = msEvents.filter(event => event.source === 'teams');
@@ -66,6 +68,7 @@ export const useCalendarEvents = (currentDate: Date) => {
         if (msEvents.length > 0) {
           console.log('Refreshed MS events:', msEvents);
           setEvents(msEvents);
+          setLoadedEventCount(msEvents.length);
           
           // Count Teams meetings
           const teamsMeetings = msEvents.filter(event => event.source === 'teams');
@@ -87,6 +90,7 @@ export const useCalendarEvents = (currentDate: Date) => {
   return {
     events,
     isLoading,
+    loadedEventCount,
     fetchEvents,
     refreshEvents,
     setEvents
