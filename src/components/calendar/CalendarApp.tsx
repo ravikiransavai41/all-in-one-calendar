@@ -1,17 +1,21 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Calendar from './Calendar';
 import CalendarSidebar from './CalendarSidebar';
 import { Button } from '@/components/ui/button';
-import { Menu } from 'lucide-react';
+import { Menu, LogOut } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAuth } from '@/hooks/useAuth';
+import SignIn from '@/components/auth/SignIn';
+import { toast } from 'sonner';
 
 const CalendarApp: React.FC = () => {
   const [showSidebar, setShowSidebar] = useState(true);
   const isMobile = useIsMobile();
+  const { user, isAuthenticated, logout } = useAuth();
   
   // If on mobile, hide sidebar by default
-  React.useEffect(() => {
+  useEffect(() => {
     if (isMobile) {
       setShowSidebar(false);
     } else {
@@ -28,6 +32,16 @@ const CalendarApp: React.FC = () => {
     console.log(`Toggle ${source}: ${checked}`);
   };
 
+  const handleLogout = () => {
+    logout();
+    toast.success('Signed out successfully');
+  };
+
+  // If not authenticated, show the sign-in form
+  if (!isAuthenticated) {
+    return <SignIn />;
+  }
+
   return (
     <div className="h-full min-h-screen flex flex-col">
       <header className="bg-calendar-header text-white p-4 flex justify-between items-center">
@@ -42,13 +56,16 @@ const CalendarApp: React.FC = () => {
           </Button>
           <h1 className="text-xl font-bold">Horizon Calendar</h1>
         </div>
-        <div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm mr-2">{user?.email}</span>
           <Button 
             variant="ghost" 
             size="sm" 
-            className="text-white hover:bg-calendar-secondary"
+            className="text-white hover:bg-calendar-secondary flex items-center gap-1"
+            onClick={handleLogout}
           >
-            Sign In
+            <LogOut className="h-4 w-4" />
+            Sign Out
           </Button>
         </div>
       </header>
