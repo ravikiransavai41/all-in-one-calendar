@@ -71,3 +71,129 @@ Yes it is!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+
+# Horizon Calendar
+
+A modern calendar application that integrates with Microsoft Teams and Outlook, featuring multiple calendar views and Microsoft authentication.
+
+## Features
+
+- Integration with Microsoft Teams and Outlook
+- Multiple calendar views (Day, Week, Month, Agenda)
+- Microsoft authentication
+- Rate limiting handling with exponential backoff
+- Fallback to mock events when needed
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18 or higher
+- npm 8 or higher
+- Docker (optional)
+- Kubernetes cluster (optional)
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/horizon-calendar.git
+cd horizon-calendar
+```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Create a `.env` file in the root directory with the following variables:
+```
+VITE_MS_CLIENT_ID=your-client-id
+VITE_MS_TENANT_ID=your-tenant-id
+VITE_MS_REDIRECT_URI=http://localhost:5173/auth/callback
+```
+
+4. Start the development server:
+```bash
+npm run dev
+```
+
+## Deployment
+
+### Docker
+
+1. Build the Docker image:
+```bash
+docker build -t horizon-calendar .
+```
+
+2. Run the container:
+```bash
+docker run -p 8080:80 horizon-calendar
+```
+
+### Docker Compose
+
+1. Start the application:
+```bash
+docker-compose up -d
+```
+
+2. Access the application at `http://localhost:8080`
+
+### Kubernetes
+
+1. Create a namespace:
+```bash
+kubectl create namespace horizon-calendar
+```
+
+2. Create secrets (replace values with your actual base64 encoded secrets):
+```bash
+kubectl apply -f k8s/secrets.yaml
+```
+
+3. Deploy the application:
+```bash
+kubectl apply -f k8s/deployment.yaml
+kubectl apply -f k8s/service.yaml
+kubectl apply -f k8s/ingress.yaml
+```
+
+4. Verify the deployment:
+```bash
+kubectl get pods -n horizon-calendar
+kubectl get services -n horizon-calendar
+kubectl get ingress -n horizon-calendar
+```
+
+## Accessing Organization-Wide Events
+
+To access organization-wide events, follow these steps:
+
+1. Register your application in the Azure Portal with the following permissions:
+   - Calendars.Read.Shared
+   - Calendars.ReadWrite.Shared
+   - User.Read.All
+
+2. Request admin consent for these permissions in the Azure Portal.
+
+3. Update the application code to fetch events from all users:
+   - Modify the `fetchMsCalendarEvents` function in `src/utils/msGraphUtils.ts`
+   - Add a user selection interface in the UI
+   - Implement proper error handling for permission issues
+
+## Rate Limiting
+
+The application implements an exponential backoff strategy for handling API request limits:
+
+- Initial retry delay: 1 second
+- Maximum retry delay: 30 seconds
+- Maximum retries: 5
+- Jitter factor: 0.1
+
+After 3 retry attempts, the application will fall back to displaying mock events to ensure a smooth user experience.
+
+## License
+
+This project is licensed under the MIT License.

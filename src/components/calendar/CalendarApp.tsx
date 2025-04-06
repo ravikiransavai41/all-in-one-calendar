@@ -1,9 +1,9 @@
-
-import React, { useState, useEffect } from 'react';
-import Calendar from './Calendar';
+import * as React from 'react';
+import { useState, useEffect } from 'react';
+import CalendarComponent from './Calendar';
 import CalendarSidebar from './CalendarSidebar';
 import { Button } from '@/components/ui/button';
-import { Menu, LogOut } from 'lucide-react';
+import { Menu, LogOut, Calendar as CalendarIcon } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/hooks/useAuth';
 import SignIn from '@/components/auth/SignIn';
@@ -44,24 +44,29 @@ const CalendarApp: React.FC = () => {
 
   return (
     <div className="h-full min-h-screen flex flex-col">
-      <header className="bg-calendar-header text-white p-4 flex justify-between items-center">
+      <header className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 flex justify-between items-center shadow-lg backdrop-blur-md">
         <div className="flex items-center">
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={toggleSidebar}
-            className="text-white hover:bg-calendar-secondary mr-2"
+            className="text-white hover:bg-white/20 mr-2 transition-all duration-300"
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <h1 className="text-xl font-bold">Horizon Calendar</h1>
+          <div className="flex items-center gap-2">
+            <div className="bg-white/20 p-2 rounded-full backdrop-blur-sm animate-pulse">
+              <CalendarIcon className="h-6 w-6 text-white" />
+            </div>
+            <h1 className="text-xl font-bold">All in One Calendar</h1>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-sm mr-2">{user?.email}</span>
+          <span className="text-sm mr-2 bg-white/10 px-3 py-1 rounded-full backdrop-blur-sm">{user?.email}</span>
           <Button 
             variant="ghost" 
             size="sm" 
-            className="text-white hover:bg-calendar-secondary flex items-center gap-1"
+            className="text-white hover:bg-white/20 flex items-center gap-1 transition-all duration-300"
             onClick={handleLogout}
           >
             <LogOut className="h-4 w-4" />
@@ -70,15 +75,15 @@ const CalendarApp: React.FC = () => {
         </div>
       </header>
       
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden bg-gradient-to-br from-gray-50 to-blue-50">
         {showSidebar && (
-          <div className={`${isMobile ? 'absolute z-10 h-full' : 'w-64'}`}>
+          <div className={`${isMobile ? 'absolute z-10 h-full' : 'w-64'} transition-all duration-300 ease-in-out`}>
             <CalendarSidebar onToggleSource={handleToggleSource} />
           </div>
         )}
         
         <div className="flex-1 p-4 overflow-auto">
-          <Calendar />
+          <CalendarComponent />
         </div>
       </div>
     </div>

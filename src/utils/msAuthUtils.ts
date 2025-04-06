@@ -1,4 +1,3 @@
-
 import { AuthenticationResult, PublicClientApplication } from "@azure/msal-browser";
 
 // Microsoft Authentication Configuration
@@ -18,28 +17,45 @@ const msalConfig = {
 export const scopes = [
   "User.Read",
   "Calendars.Read",
+  "Calendars.ReadWrite",
   "Mail.Read",
   "offline_access",
   "Presence.Read.All",
-  "Presence.Read"
+  "Presence.Read",
+  "OnlineMeetings.ReadWrite" // Add permission for Teams meetings
 ];
 
 // Create MSAL instance
 export const msalInstance = new PublicClientApplication(msalConfig);
 
+// Initialize MSAL
+msalInstance.initialize().then(() => {
+  // Handle the redirect promise and catch any errors
+  msalInstance.handleRedirectPromise().catch(error => {
+    console.error("Error handling redirect:", error);
+  });
+});
+
 // Login with Microsoft
 export const loginWithMicrosoft = async (): Promise<AuthenticationResult> => {
   try {
     // Try silent login first (if there's an existing session)
-    const silentRequest = {
-      scopes,
-      account: msalInstance.getAllAccounts()[0],
-    };
+    const accounts = msalInstance.getAllAccounts();
+    if (accounts.length > 0) {
+      const silentRequest = {
+        scopes,
+        account: accounts[0],
+      };
 
-    try {
-      return await msalInstance.acquireTokenSilent(silentRequest);
-    } catch (silentError) {
-      console.log("Silent token acquisition failed, using popup");
+      try {
+        console.log('Attempting silent token acquisition...');
+        return await msalInstance.acquireTokenSilent(silentRequest);
+      } catch (silentError) {
+        console.log("Silent token acquisition failed, using popup");
+        return await msalInstance.acquireTokenPopup({ scopes });
+      }
+    } else {
+      console.log('No accounts found, initiating new login...');
       return await msalInstance.acquireTokenPopup({ scopes });
     }
   } catch (error: any) {
@@ -51,41 +67,62 @@ export const loginWithMicrosoft = async (): Promise<AuthenticationResult> => {
 // Get Microsoft Graph API access token
 export const getMsGraphToken = async (): Promise<string> => {
   try {
-    const account = msalInstance.getAllAccounts()[0];
-    if (!account) {
+    const accounts = msalInstance.getAllAccounts();
+    if (accounts.length === 0) {
       throw new Error("No account found");
     }
 
     const silentRequest = {
       scopes,
-      account,
+      account: accounts[0],
     };
 
-    const response = await msalInstance.acquireTokenSilent(silentRequest);
-    return response.accessToken;
+    try {
+      console.log('Attempting to acquire token silently...');
+      const response = await msalInstance.acquireTokenSilent(silentRequest);
+      console.log('Token acquired successfully');
+      return response.accessToken;
+    } catch (silentError) {
+      console.log("Silent token acquisition failed, attempting popup...");
+      const response = await msalInstance.acquireTokenPopup({ scopes });
+      return response.accessToken;
+    }
   } catch (error) {
     console.error("Error getting Microsoft Graph token:", error);
-    const response = await msalInstance.acquireTokenPopup({ scopes });
-    return response.accessToken;
+    throw error;
   }
 };
 
 // Fetch user profile from Microsoft Graph API
 export const fetchMsUserProfile = async (accessToken: string) => {
-  const response = await fetch("https://graph.microsoft.com/v1.0/me", {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
+  try {
+    console.log('Fetching Microsoft user profile...');
+    const response = await fetch("https://graph.microsoft.com/v1.0/me", {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
 
-  if (!response.ok) {
-    throw new Error("Failed to fetch Microsoft user profile");
+    if (!response.ok) {
+      throw new Error("Failed to fetch Microsoft user profile");
+    }
+
+    const profile = await response.json();
+    console.log('Microsoft profile fetched:', profile);
+    return profile;
+  } catch (error) {
+    console.error("Error fetching Microsoft profile:", error);
+    throw error;
   }
-
-  return await response.json();
 };
 
 // Logout from Microsoft
 export const logoutFromMicrosoft = async () => {
-  await msalInstance.logoutPopup();
+  const accounts = msalInstance.getAllAccounts();
+  if (accounts.length > 0) {
+    await msalInstance.logoutPopup({
+      account: accounts[0],
+      postLogoutRedirectUri: window.location.origin,
+    });
+  }
 };

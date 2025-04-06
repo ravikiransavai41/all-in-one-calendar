@@ -1,7 +1,6 @@
-
 import React from 'react';
-import { format, isSameDay, isToday } from 'date-fns';
-import { CalendarEvent, formatEventTime } from '@/utils/calendarUtils';
+import { format, isSameDay, startOfDay, endOfDay } from 'date-fns';
+import { CalendarEvent, getEventsForDay } from '@/utils/calendarUtils';
 import { cn } from '@/lib/utils';
 
 interface CalendarAgendaProps {
@@ -17,96 +16,67 @@ const CalendarAgenda: React.FC<CalendarAgendaProps> = ({
   onEventClick,
   onDateClick,
 }) => {
-  // Group events by date
-  const eventsByDate: Record<string, CalendarEvent[]> = {};
+  // Debug logs
+  console.log('CalendarAgenda - Received events:', events);
+  console.log('CalendarAgenda - Current date:', currentDate);
   
-  events.forEach(event => {
-    const dateStr = format(new Date(event.start), 'yyyy-MM-dd');
-    if (!eventsByDate[dateStr]) {
-      eventsByDate[dateStr] = [];
-    }
-    eventsByDate[dateStr].push(event);
+  // Get events for the next 7 days
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const date = new Date(currentDate);
+    date.setDate(date.getDate() + i);
+    return date;
   });
   
-  // Sort dates
-  const sortedDates = Object.keys(eventsByDate).sort();
+  // Group events by day
+  const eventsByDay = days.map(date => ({
+    date,
+    events: getEventsForDay(events, date).sort((a, b) => a.start.getTime() - b.start.getTime())
+  }));
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto">
-      {sortedDates.length === 0 ? (
-        <div className="flex items-center justify-center h-full text-muted-foreground">
-          No events to display
-        </div>
-      ) : (
-        sortedDates.map(dateStr => {
-          const date = new Date(dateStr);
-          const isCurrentDay = isSameDay(date, currentDate);
-          const isTodayDate = isToday(date);
-          const dayEvents = eventsByDate[dateStr];
-          
-          return (
-            <div key={dateStr} className="mb-4">
-              <div 
-                className={cn(
-                  "p-2 sticky top-0 bg-white z-10 border-b border-border",
-                  isCurrentDay && "bg-calendar-selected"
-                )}
-                onClick={() => onDateClick(date)}
-              >
-                <div className={cn(
-                  "font-medium flex items-center gap-2 cursor-pointer",
-                  isTodayDate && "text-calendar-primary"
-                )}>
-                  <span className={cn(
-                    "inline-flex items-center justify-center w-8 h-8 rounded-full",
-                    isTodayDate && "bg-calendar-primary text-white"
-                  )}>
-                    {format(date, 'd')}
-                  </span>
-                  <span>{format(date, 'EEEE, MMMM yyyy')}</span>
-                </div>
-              </div>
-              
-              <div className="divide-y divide-border">
-                {dayEvents.map(event => (
-                  <div 
-                    key={event.id}
-                    className="p-3 hover:bg-muted cursor-pointer flex"
-                    onClick={() => onEventClick(event)}
-                  >
-                    <div className="w-16 text-sm mr-4">
-                      {formatEventTime(new Date(event.start))}
-                    </div>
-                    
-                    <div className="flex-grow">
-                      <div className="font-medium">{event.title}</div>
-                      <div className="text-sm text-muted-foreground flex items-center">
-                        <span>{formatEventTime(new Date(event.start))} - {formatEventTime(new Date(event.end))}</span>
-                        {event.source && (
-                          <span className="ml-2 px-2 py-0.5 bg-muted text-xs rounded-full">
-                            {event.source === 'teams' ? 'Teams' : 
-                             event.source === 'outlook' ? 'Outlook' : 'Manual'}
-                          </span>
-                        )}
-                      </div>
-                      {event.location && (
-                        <div className="text-sm text-muted-foreground">
-                          {event.isVirtual ? '🖥️ Virtual' : '📍'} {event.location}
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div 
-                      className="w-1 self-stretch rounded"
-                      style={{ backgroundColor: event.color }}
-                    ></div>
-                  </div>
-                ))}
-              </div>
+    <div className="h-full flex flex-col">
+      <div className="p-4 border-b border-border">
+        <h2 className="text-2xl font-bold">Agenda</h2>
+      </div>
+      
+      <div className="agenda-list flex-grow overflow-y-auto">
+        {eventsByDay.map(({ date, events }) => (
+          <div key={date.toISOString()} className="agenda-day">
+            <div className="agenda-day-header">
+              {format(date, 'EEEE, MMMM d, yyyy')}
             </div>
-          );
-        })
-      )}
+            
+            {events.length === 0 ? (
+              <div className="text-muted-foreground text-sm p-2">No events</div>
+            ) : (
+              events.map(event => (
+                <div
+                  key={event.id}
+                  className="agenda-event"
+                  style={{ 
+                    backgroundColor: event.color || '#2196f3',
+                    color: '#ffffff'
+                  }}
+                  onClick={() => onEventClick(event)}
+                >
+                  <div className="font-medium">{event.title}</div>
+                  <div className="text-sm">
+                    {format(event.start, 'h:mm a')} - {format(event.end, 'h:mm a')}
+                  </div>
+                  {event.location && (
+                    <div className="text-sm truncate">
+                      📍 {event.location}
+                    </div>
+                  )}
+                  <div className="text-xs mt-1">
+                    Source: {event.source}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
