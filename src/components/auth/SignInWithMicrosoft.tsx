@@ -3,6 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 const SignInWithMicrosoft: React.FC = () => {
   const { loginWithMS, isLoading } = useAuth();
@@ -12,8 +13,9 @@ const SignInWithMicrosoft: React.FC = () => {
     try {
       setLocalLoading(true);
       await loginWithMS();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Microsoft sign-in error:', error);
+      toast.error(`Failed to sign in: ${error.message || 'Please check if the redirect URI is configured correctly in Azure portal'}`);
     } finally {
       setLocalLoading(false);
     }
