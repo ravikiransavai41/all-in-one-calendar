@@ -1,83 +1,90 @@
 
 import React, { useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Mail, Calendar } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
+import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import SignInWithMicrosoft from './SignInWithMicrosoft';
 
 const SignIn: React.FC = () => {
-  const { login, isLoading, error } = useAuth();
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  const { login, error } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    if (!email) {
+      toast.error('Please enter your email');
+      return;
+    }
+
     try {
-      await login(email, password);
+      setIsSigningIn(true);
+      await login(email, 'password'); // We're only using email for mock auth
       toast.success('Signed in successfully');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to sign in');
+    } catch (err) {
+      // Error is already handled in the useAuth hook
+    } finally {
+      setIsSigningIn(false);
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-50">
+    <div className="h-screen flex items-center justify-center p-4 bg-gray-50">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <div className="flex items-center justify-center mb-4">
-            <Calendar className="h-10 w-10 text-calendar-primary" />
-          </div>
-          <CardTitle className="text-2xl font-bold text-center">Horizon Calendar</CardTitle>
-          <CardDescription className="text-center">
-            Sign in to access your unified calendar
+          <CardTitle className="text-2xl font-bold">Sign in to Horizon Calendar</CardTitle>
+          <CardDescription>
+            Enter your email to sign in to your account or use Microsoft login
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
-                  required
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
-                <a href="#" className="text-sm text-calendar-primary hover:underline">
-                  Forgot password?
-                </a>
-              </div>
               <Input
-                id="password"
-                type="password"
-                placeholder="******"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
+                type="email"
+                placeholder="Email address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-            <Button type="submit" className="w-full bg-calendar-primary hover:bg-calendar-secondary" disabled={isLoading}>
-              {isLoading ? 'Signing in...' : 'Sign In'}
+            <Button 
+              type="submit" 
+              className="w-full bg-calendar-primary hover:bg-calendar-secondary"
+              disabled={isSigningIn}
+            >
+              {isSigningIn ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                'Sign in with Email'
+              )}
             </Button>
           </form>
-        </CardContent>
-        <CardFooter className="justify-center">
-          <div className="text-sm text-muted-foreground text-center">
-            This application integrates with Microsoft services to provide a unified calendar experience.
+          
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t"></span>
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white px-2 text-muted-foreground">Or continue with</span>
+            </div>
           </div>
+
+          <SignInWithMicrosoft />
+          
+          {error && (
+            <div className="bg-destructive/10 text-destructive text-center p-2 rounded-md">
+              {error}
+            </div>
+          )}
+        </CardContent>
+        <CardFooter className="text-center text-sm text-muted-foreground">
+          Sign in to see your calendar events from Microsoft Teams and Outlook
         </CardFooter>
       </Card>
     </div>

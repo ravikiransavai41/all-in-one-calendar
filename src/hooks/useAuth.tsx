@@ -1,11 +1,15 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { loginWithMicrosoft, logoutFromMicrosoft, fetchMsUserProfile } from '@/utils/msAuthUtils';
+import { toast } from 'sonner';
 
 type User = {
   id: string;
   email: string;
   name: string;
   avatar?: string;
+  accessToken?: string;
+  microsoftAccount?: boolean;
 };
 
 interface AuthContextType {
@@ -13,6 +17,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithMS: () => Promise<void>;
   logout: () => void;
   error: string | null;
 }
@@ -62,9 +67,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('calendar_user');
-    setUser(null);
+  const loginWithMS = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const authResult = await loginWithMicrosoft();
+      const msProfile = await fetchMsUserProfile(authResult.accessToken);
+      
+      const msUser: User = {
+        id: msProfile.id,
+        email: msProfile.mail || msProfile.userPrincipalName,
+        name: msProfile.displayName,
+        avatar: undefined, // Microsoft Graph doesn't directly provide avatar in basic profile
+        accessToken: authResult.accessToken,
+        microsoftAccount: true
+      };
+      
+      // Store user in localStorage
+      localStorage.setItem('calendar_user', JSON.stringify(msUser));
+      setUser(msUser);
+      toast.success('Signed in with Microsoft successfully');
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign in with Microsoft');
+      toast.error('Failed to sign in with Microsoft');
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const logout = async () => {
+    try {
+      if (user?.microsoftAccount) {
+        await logoutFromMicrosoft();
+      }
+      localStorage.removeItem('calendar_user');
+      setUser(null);
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Still clear local state even if MS logout fails
+      localStorage.removeItem('calendar_user');
+      setUser(null);
+    }
   };
 
   return (
@@ -74,6 +119,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!user,
         isLoading,
         login,
+        loginWithMS,
         logout,
         error
       }}
