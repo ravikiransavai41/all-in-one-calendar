@@ -38,15 +38,19 @@ export const fetchMsCalendarEvents = async (
       const isTeamsMeeting = 
         msEvent.isOnlineMeeting && (
           (msEvent.onlineMeetingProvider && msEvent.onlineMeetingProvider === 'teamsForBusiness') ||
-          (msEvent.onlineMeetingUrl?.includes("teams.microsoft.com")) ||
+          (msEvent.onlineMeetingUrl && msEvent.onlineMeetingUrl.includes("teams.microsoft.com")) ||
           (msEvent.bodyPreview && msEvent.bodyPreview.toLowerCase().includes("teams"))
         );
       
+      // Fix date parsing - don't add 'Z' as it's already in ISO format
+      const startDate = new Date(msEvent.start.dateTime);
+      const endDate = new Date(msEvent.end.dateTime);
+      
       return {
         id: msEvent.id,
-        title: msEvent.subject,
-        start: new Date(msEvent.start.dateTime + 'Z'),
-        end: new Date(msEvent.end.dateTime + 'Z'),
+        title: msEvent.subject || 'Untitled Event',
+        start: startDate,
+        end: endDate,
         description: msEvent.bodyPreview,
         location: msEvent.location?.displayName,
         isVirtual: msEvent.isOnlineMeeting,

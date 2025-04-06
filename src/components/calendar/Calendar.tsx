@@ -19,7 +19,7 @@ const Calendar: React.FC = () => {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isEventDialogOpen, setIsEventDialogOpen] = useState<boolean>(false);
   const { user } = useAuth();
-  const { events, isLoading, refreshEvents, setEvents } = useCalendarEvents(currentDate);
+  const { events, isLoading, loadedEventCount, refreshEvents, setEvents } = useCalendarEvents(currentDate);
 
   const handleDateChange = (date: Date) => {
     setCurrentDate(date);
@@ -74,7 +74,14 @@ const Calendar: React.FC = () => {
 
       <div className="flex-grow overflow-auto">
         {isLoading ? (
-          <CalendarLoading />
+          <CalendarLoading 
+            message="Loading events from Microsoft..." 
+            count={loadedEventCount} 
+          />
+        ) : events.length === 0 ? (
+          <div className="h-full flex items-center justify-center text-muted-foreground">
+            No events found. Try refreshing or changing the date range.
+          </div>
         ) : (
           <>
             {view === 'month' && (
