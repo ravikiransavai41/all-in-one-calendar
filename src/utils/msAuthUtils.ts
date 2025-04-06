@@ -6,7 +6,7 @@ const msalConfig = {
   auth: {
     clientId: "27c750cd-8d7b-45b1-9dec-c52e444eefc9",
     authority: `https://login.microsoftonline.com/b41b72d0-4e9f-4c26-8a69-f949f367c91d`,
-    redirectUri: window.location.origin, // This will use the current origin dynamically
+    redirectUri: window.location.origin,
   },
   cache: {
     cacheLocation: "localStorage",
@@ -40,11 +40,7 @@ export const loginWithMicrosoft = async (): Promise<AuthenticationResult> => {
       return await msalInstance.acquireTokenSilent(silentRequest);
     } catch (silentError) {
       console.log("Silent token acquisition failed, using popup");
-      const loginRequest = { 
-        scopes,
-        redirectUri: window.location.origin // Ensure redirect URI is set consistently
-      };
-      return await msalInstance.acquireTokenPopup(loginRequest);
+      return await msalInstance.acquireTokenPopup({ scopes });
     }
   } catch (error: any) {
     console.error("Error during Microsoft login:", error);
@@ -69,11 +65,7 @@ export const getMsGraphToken = async (): Promise<string> => {
     return response.accessToken;
   } catch (error) {
     console.error("Error getting Microsoft Graph token:", error);
-    const loginRequest = {
-      scopes,
-      redirectUri: window.location.origin // Ensure redirect URI is set consistently
-    };
-    const response = await msalInstance.acquireTokenPopup(loginRequest);
+    const response = await msalInstance.acquireTokenPopup({ scopes });
     return response.accessToken;
   }
 };
@@ -95,8 +87,5 @@ export const fetchMsUserProfile = async (accessToken: string) => {
 
 // Logout from Microsoft
 export const logoutFromMicrosoft = async () => {
-  const logoutRequest = {
-    postLogoutRedirectUri: window.location.origin
-  };
-  await msalInstance.logoutPopup(logoutRequest);
+  await msalInstance.logoutPopup();
 };
