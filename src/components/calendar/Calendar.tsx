@@ -35,10 +35,17 @@ const Calendar: React.FC = () => {
           
           const msEvents = await fetchMsCalendarEvents(startDate, endDate);
           if (msEvents.length > 0) {
+            console.log('Retrieved MS events:', msEvents);
             setEvents(msEvents);
-            toast.success(`Loaded ${msEvents.length} events from Microsoft`);
+            
+            // Count Teams meetings
+            const teamsMeetings = msEvents.filter(event => event.source === 'teams');
+            console.log(`Found ${teamsMeetings.length} Teams meetings out of ${msEvents.length} total events`);
+            
+            toast.success(`Loaded ${msEvents.length} events from Microsoft (${teamsMeetings.length} Teams meetings)`);
           } else {
             // If no real events, use mock data temporarily
+            console.log('No Microsoft events found, using mock data');
             setEvents(generateMockEvents(currentDate, 20));
             toast.info('No Microsoft events found for this time period. Showing mock data.');
           }
@@ -104,8 +111,14 @@ const Calendar: React.FC = () => {
         
         const msEvents = await fetchMsCalendarEvents(startDate, endDate);
         if (msEvents.length > 0) {
+          console.log('Refreshed MS events:', msEvents);
           setEvents(msEvents);
-          toast.success(`Refreshed ${msEvents.length} events from Microsoft`);
+          
+          // Count Teams meetings
+          const teamsMeetings = msEvents.filter(event => event.source === 'teams');
+          console.log(`Found ${teamsMeetings.length} Teams meetings out of ${msEvents.length} total events`);
+          
+          toast.success(`Refreshed ${msEvents.length} events from Microsoft (${teamsMeetings.length} Teams meetings)`);
         } else {
           toast.info('No Microsoft events found for this time period.');
         }

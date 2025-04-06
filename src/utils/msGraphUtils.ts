@@ -16,7 +16,7 @@ export const fetchMsCalendarEvents = async (
     
     // Fetch calendar events
     const response = await fetch(
-      `https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${start}&endDateTime=${end}&$select=id,subject,organizer,start,end,location,bodyPreview,isOnlineMeeting,onlineMeetingUrl&$top=100`,
+      `https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${start}&endDateTime=${end}&$select=id,subject,organizer,start,end,location,bodyPreview,isOnlineMeeting,onlineMeetingUrl,onlineMeetingProvider&$top=100`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -34,9 +34,13 @@ export const fetchMsCalendarEvents = async (
 
     // Transform Microsoft events to our app's format
     return data.value.map((msEvent: any) => {
-      const isTeamsMeeting = msEvent.isOnlineMeeting && 
-                             (msEvent.onlineMeetingUrl?.includes("teams.microsoft.com") || 
-                             (msEvent.bodyPreview && msEvent.bodyPreview.toLowerCase().includes("teams")));
+      // Detect Teams meetings more accurately
+      const isTeamsMeeting = 
+        msEvent.isOnlineMeeting && (
+          (msEvent.onlineMeetingProvider && msEvent.onlineMeetingProvider === 'teamsForBusiness') ||
+          (msEvent.onlineMeetingUrl?.includes("teams.microsoft.com")) ||
+          (msEvent.bodyPreview && msEvent.bodyPreview.toLowerCase().includes("teams"))
+        );
       
       return {
         id: msEvent.id,
@@ -52,7 +56,7 @@ export const fetchMsCalendarEvents = async (
     });
   } catch (error) {
     console.error("Error fetching Microsoft calendar events:", error);
-    return [];
+    throw error; // Let the Calendar component handle the error
   }
 };
 
@@ -66,7 +70,7 @@ export const fetchTeamsMeetings = async (
     return events.filter(event => event.source === 'teams');
   } catch (error) {
     console.error("Error fetching Teams meetings:", error);
-    return [];
+    throw error;
   }
 };
 
@@ -80,6 +84,6 @@ export const fetchOutlookEvents = async (
     return events.filter(event => event.source === 'outlook');
   } catch (error) {
     console.error("Error fetching Outlook events:", error);
-    return [];
+    throw error;
   }
 };
