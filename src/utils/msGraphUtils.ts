@@ -4,9 +4,10 @@ import { format } from 'date-fns';
 
 // Rate limiting configuration
 const RATE_LIMIT = {
-  maxRequests: 60, // Maximum requests per minute
+  maxRequests: 30, // Reduced to be more conservative
   windowMs: 60 * 1000, // 1 minute window
-  retryAfter: 60 * 1000, // Default retry after 1 minute
+  retryAfter: 15 * 1000, // 15 seconds default retry
+  minRetryDelay: 5 * 1000, // Minimum 5 seconds between requests
 };
 
 let requestCount = 0;
@@ -15,10 +16,11 @@ let lastRequestTime = 0;
 
 // Helper function to handle rate limiting with exponential backoff
 const handleRateLimit = async (retryAfter: number, retryCount: number) => {
-  // Calculate exponential backoff: base delay * 2^retryCount
-  // Add some jitter to prevent all clients from retrying at the same time
-  const jitter = Math.random() * 1000; // Random jitter between 0-1000ms
-  const backoffDelay = Math.min(retryAfter * Math.pow(2, retryCount) + jitter, 30000); // Cap at 30 seconds
+  // Calculate exponential backoff with a minimum delay
+  const backoffDelay = Math.max(
+    RATE_LIMIT.minRetryDelay,
+    Math.min(retryAfter * Math.pow(1.5, retryCount), 30000) // Cap at 30 seconds
+  );
   
   console.log(`Rate limited. Waiting ${Math.round(backoffDelay / 1000)} seconds before retry ${retryCount + 1}...`);
   await new Promise(resolve => setTimeout(resolve, backoffDelay));
@@ -29,8 +31,16 @@ const handleRateLimit = async (retryAfter: number, retryCount: number) => {
 };
 
 // Helper function to check and update rate limit
-const checkRateLimit = () => {
+const checkRateLimit = async () => {
   const now = Date.now();
+  
+  // Ensure minimum delay between requests
+  const timeSinceLastRequest = now - lastRequestTime;
+  if (timeSinceLastRequest < RATE_LIMIT.minRetryDelay) {
+    await new Promise(resolve => 
+      setTimeout(resolve, RATE_LIMIT.minRetryDelay - timeSinceLastRequest)
+    );
+  }
   
   // Reset window if it's been more than windowMs
   if (now - windowStart >= RATE_LIMIT.windowMs) {
@@ -56,55 +66,44 @@ export const fetchMsCalendarEvents = async (
   startDate: Date,
   endDate: Date
 ): Promise<CalendarEvent[]> => {
-  const maxRetries = 5; // Increased from 3 to 5
+  const maxRetries = 3; // Reduced from 5 to 3
   let retryCount = 0;
   
   while (retryCount < maxRetries) {
     try {
       // Check rate limit before making request
-      checkRateLimit();
+      await checkRateLimit();
       
       const formattedStartDate = format(startDate, "yyyy-MM-dd'T'HH:mm:ss");
       const formattedEndDate = format(endDate, "yyyy-MM-dd'T'HH:mm:ss");
       
       console.log('Fetching Microsoft calendar events...');
-      console.log('Date range:', { startDate: formattedStartDate, endDate: formattedEndDate });
       
-      // Get the access token from the user object in localStorage
-      const userJson = localStorage.getItem('calendar_user');
-      if (!userJson) {
-        throw new Error('User not authenticated');
-      }
+      // Get a fresh access token using getMsGraphToken
+      const accessToken = await getMsGraphToken();
       
-      const user = JSON.parse(userJson);
-      const accessToken = user.accessToken;
-      
-      if (!accessToken) {
-        throw new Error('Access token not found');
-      }
-      
-      console.log('Using access token for Microsoft Graph API');
-      
-    const response = await fetch(
-        `https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${formattedStartDate}&endDateTime=${formattedEndDate}&$select=id,subject,start,end,location,bodyPreview,isOnlineMeeting,onlineMeetingUrl,onlineMeetingProvider&$top=100`,
-      {
-        headers: {
+      const response = await fetch(
+        `https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${formattedStartDate}&endDateTime=${formattedEndDate}&$select=id,subject,start,end,isOnlineMeeting,onlineMeetingProvider&$orderby=start/dateTime&$top=50`,
+        {
+          headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
-        },
-      }
-    );
+            'Prefer': 'outlook.timezone="UTC"',
+            'Prefer': 'outlook.body-content-type="text"'
+          },
+        }
+      );
 
       // Handle rate limiting (429)
       if (response.status === 429) {
-        const retryAfter = parseInt(response.headers.get('Retry-After') || '60', 10) * 1000;
+        const retryAfter = parseInt(response.headers.get('Retry-After') || '15', 10) * 1000;
         await handleRateLimit(retryAfter, retryCount);
         retryCount++;
         continue;
       }
       
       // Handle other error status codes
-    if (!response.ok) {
+      if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error('Microsoft Graph API error:', {
           status: response.status,
@@ -119,10 +118,9 @@ export const fetchMsCalendarEvents = async (
         } else {
           throw new Error(`Failed to fetch calendar events: ${response.status} ${response.statusText}`);
         }
-    }
+      }
 
-    const data = await response.json();
-      console.log('Microsoft calendar events response:', data);
+      const data = await response.json();
       
       if (!data.value || !Array.isArray(data.value)) {
         console.warn('Unexpected response format from Microsoft Graph API');
@@ -134,35 +132,25 @@ export const fetchMsCalendarEvents = async (
         title: event.subject || 'Untitled Event',
         start: new Date(event.start.dateTime),
         end: new Date(event.end.dateTime),
-        location: event.location?.displayName || '',
-        description: event.bodyPreview || '',
         source: 'teams',
         isOnlineMeeting: event.isOnlineMeeting || false,
-        onlineMeetingUrl: event.onlineMeetingUrl || '',
         onlineMeetingProvider: event.onlineMeetingProvider || '',
       }));
       
-      console.log('Processed Microsoft calendar events:', events);
       return events;
-      
-  } catch (error) {
+    } catch (error) {
       console.error('Error fetching Microsoft calendar events:', error);
       
-      // If it's a rate limit error and we haven't exceeded max retries, try again
       if (error instanceof Error && error.message.includes('Rate limit exceeded') && retryCount < maxRetries - 1) {
         retryCount++;
-        const waitTime = RATE_LIMIT.retryAfter * Math.pow(2, retryCount);
-        console.log(`Rate limit error. Retrying in ${waitTime / 1000} seconds... (Attempt ${retryCount + 1}/${maxRetries})`);
-        await new Promise(resolve => setTimeout(resolve, waitTime));
+        await handleRateLimit(RATE_LIMIT.retryAfter, retryCount);
         continue;
       }
       
-      // For other errors or if we've exceeded max retries, throw the error
       throw error;
     }
   }
   
-  // If we've exhausted all retries, throw an error
   throw new Error('Failed to fetch calendar events after multiple retries');
 };
 
