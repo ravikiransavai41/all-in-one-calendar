@@ -8,6 +8,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/hooks/useAuth';
 import SignIn from '@/components/auth/SignIn';
 import { toast } from 'sonner';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { cn } from '@/lib/utils';
 
 const CalendarApp: React.FC = () => {
   const [showSidebar, setShowSidebar] = useState(true);
@@ -43,46 +45,52 @@ const CalendarApp: React.FC = () => {
   }
 
   return (
-    <div className="h-full min-h-screen flex flex-col">
-      <header className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 flex justify-between items-center shadow-lg backdrop-blur-md">
-        <div className="flex items-center">
+    <div className="h-full min-h-screen flex flex-col bg-white dark:bg-gray-900">
+      <header className="border-b border-gray-200 dark:border-gray-800 px-4 py-2 flex justify-between items-center bg-white dark:bg-gray-900">
+        <div className="flex items-center gap-4">
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={toggleSidebar}
-            className="text-white hover:bg-white/20 mr-2 transition-all duration-300"
+            className="hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400"
           >
             <Menu className="h-5 w-5" />
           </Button>
           <div className="flex items-center gap-2">
-            <div className="bg-white/20 p-2 rounded-full backdrop-blur-sm animate-pulse">
-              <CalendarIcon className="h-6 w-6 text-white" />
-            </div>
-            <h1 className="text-xl font-bold">All in One Calendar</h1>
+            <CalendarIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">All in One Calendar</h1>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm mr-2 bg-white/10 px-3 py-1 rounded-full backdrop-blur-sm">{user?.email}</span>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="text-white hover:bg-white/20 flex items-center gap-1 transition-all duration-300"
-            onClick={handleLogout}
-          >
-            <LogOut className="h-4 w-4" />
-            Sign Out
-          </Button>
+
+        <div className="flex items-center gap-4">
+          <ThemeToggle />
+          <div className="h-5 w-px bg-gray-200 dark:bg-gray-700" />
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600 dark:text-gray-400">{user?.email}</span>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400 flex items-center gap-1"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-4 w-4" />
+              Sign Out
+            </Button>
+          </div>
         </div>
       </header>
       
-      <div className="flex flex-1 overflow-hidden bg-gradient-to-br from-gray-50 to-blue-50">
+      <div className="flex flex-1 overflow-hidden">
         {showSidebar && (
-          <div className={`${isMobile ? 'absolute z-10 h-full' : 'w-64'} transition-all duration-300 ease-in-out`}>
+          <div className={cn(
+            isMobile ? 'absolute z-10 h-full' : 'w-60',
+            'border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900'
+          )}>
             <CalendarSidebar onToggleSource={handleToggleSource} />
           </div>
         )}
         
-        <div className="flex-1 p-4 overflow-auto">
+        <div className="flex-1 overflow-auto">
           <CalendarComponent />
         </div>
       </div>

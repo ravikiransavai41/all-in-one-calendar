@@ -11,6 +11,7 @@ export interface CalendarEvent {
   source: 'teams' | 'outlook' | 'google' | 'manual';
   color?: string;
   isAllDay?: boolean;
+  isOnline?: boolean;
   attendees?: {
     name: string;
     email: string;
@@ -60,6 +61,7 @@ export const generateMockEvents = (baseDate: Date, count: number): CalendarEvent
       source,
       color: source === 'teams' ? '#7b83eb' : source === 'outlook' ? '#71afe5' : source === 'google' ? '#4285f4' : '#3aa0f3',
       isAllDay: Math.random() > 0.8, // 20% chance of being an all-day event
+      isOnline: Math.random() > 0.5, // 50% chance of being online
       attendees: Math.random() > 0.5 ? [
         { name: 'John Doe', email: 'john@example.com', response: 'accepted' },
         { name: 'Jane Smith', email: 'jane@example.com', response: 'tentative' }

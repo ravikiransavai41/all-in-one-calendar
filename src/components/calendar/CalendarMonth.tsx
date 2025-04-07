@@ -2,7 +2,7 @@ import * as React from 'react';
 import { format, isSameDay, isToday } from 'date-fns';
 import { CalendarEvent, generateCalendarMonth, getEventsForDay, isCurrentMonth } from '@/utils/calendarUtils';
 import { cn } from '@/lib/utils';
-import { Video, MapPin } from 'lucide-react';
+import { Link2 } from 'lucide-react';
 
 interface CalendarMonthProps {
   currentDate: Date;
@@ -18,38 +18,41 @@ const CalendarMonth: React.FC<CalendarMonthProps> = ({
   onDateClick,
 }) => {
   const days = generateCalendarMonth(currentDate);
-  
-  // Debug logs
-  console.log('CalendarMonth - Received events:', events);
-  console.log('CalendarMonth - Current date:', currentDate);
-  
-  // Day name headers
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  const getEventColor = (event: CalendarEvent) => {
-    if (event.source === 'teams') {
-      return 'rgba(98, 100, 167, 0.85)'; // Microsoft Teams color with transparency
-    } else if (event.source === 'outlook') {
-      return 'rgba(0, 120, 212, 0.85)'; // Microsoft Outlook color with transparency
-    } else if (event.source === 'google') {
-      return 'rgba(66, 133, 244, 0.85)'; // Google Calendar color with transparency
+  const getEventStyle = (event: CalendarEvent) => {
+    // Default style for meetings/interviews
+    const defaultStyle = {
+      backgroundColor: '#5B5FC7',
+      color: 'white',
+      borderLeft: '3px solid #4548A8'
+    };
+
+    // Style for public holidays or special events
+    if (event.title.toLowerCase().includes('holiday')) {
+      return {
+        backgroundColor: '#E8356D',
+        color: 'white',
+        borderLeft: '3px solid #C42A5C'
+      };
     }
-    return event.color || 'rgba(33, 150, 243, 0.85)';
+
+    return defaultStyle;
   };
 
   return (
-    <div className="h-full flex flex-col bg-transparent">
-      {/* Day headers with fixed width to ensure alignment */}
-      <div className="grid grid-cols-7 gap-1 py-3 border-b border-border/30 bg-white/30 backdrop-blur-md rounded-t-lg">
+    <div className="h-full flex flex-col bg-white dark:bg-gray-900">
+      {/* Day headers */}
+      <div className="grid grid-cols-7 border-b dark:border-gray-800">
         {dayNames.map((day) => (
-          <div key={day} className="text-center font-medium text-sm text-gray-700">
+          <div key={day} className="p-4 text-sm font-medium text-gray-600 dark:text-gray-400 text-center border-r dark:border-gray-800 last:border-r-0">
             {day}
           </div>
         ))}
       </div>
       
-      {/* Calendar grid with fixed column widths */}
-      <div className="calendar-grid flex-grow grid grid-cols-7 grid-rows-6 gap-1 p-1 bg-white/20 backdrop-blur-sm rounded-b-lg">
+      {/* Calendar grid */}
+      <div className="flex-grow grid grid-cols-7 grid-rows-6">
         {days.map((day, index) => {
           const isCurrentMonthDay = isCurrentMonth(day, currentDate);
           const dayEvents = getEventsForDay(events, day);
@@ -60,65 +63,51 @@ const CalendarMonth: React.FC<CalendarMonthProps> = ({
             <div
               key={index}
               className={cn(
-                "calendar-cell p-2 min-h-[80px] border border-border/20 rounded-md bg-white/40 backdrop-blur-sm",
-                "transition-all duration-300 ease-in-out hover:bg-white/60 hover:shadow-md",
-                isCurrentMonthDay ? "opacity-100" : "opacity-40",
-                isTodayDate && "bg-blue-50/80",
-                isSelected && "bg-blue-100/80"
+                "min-h-[120px] p-2 border-r border-b dark:border-gray-800 last:border-r-0",
+                "hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer",
+                isCurrentMonthDay ? "bg-white dark:bg-gray-900" : "bg-gray-50 dark:bg-gray-800/50",
+                isTodayDate && "bg-blue-50 dark:bg-blue-900/20",
+                isSelected && "ring-2 ring-blue-200 dark:ring-blue-500 ring-inset"
               )}
               onClick={() => onDateClick(day)}
             >
-              <div className="flex justify-between items-start">
+              <div className="flex items-center h-6">
                 <span
                   className={cn(
                     "inline-flex items-center justify-center w-6 h-6 text-sm rounded-full",
-                    "transition-all duration-300 ease-in-out",
-                    isTodayDate && "font-bold bg-blue-600 text-white"
+                    isTodayDate && "bg-blue-600 text-white font-medium",
+                    !isTodayDate && !isCurrentMonthDay && "text-gray-400 dark:text-gray-600",
+                    !isTodayDate && isCurrentMonthDay && "text-gray-900 dark:text-gray-300"
                   )}
                 >
                   {format(day, 'd')}
                 </span>
               </div>
               
-              <div className="mt-1 space-y-1 max-h-[60px] overflow-y-auto">
+              <div className="mt-1 space-y-1">
                 {dayEvents.length > 0 ? (
                   dayEvents.map((event) => (
                     <div
                       key={event.id}
                       className={cn(
-                        "calendar-event text-xs p-1 rounded cursor-pointer",
-                        "hover:opacity-90 transition-all duration-300 ease-in-out hover:scale-[1.02] hover:shadow-lg",
-                        "animate-fadeIn"
+                        "text-xs px-2 py-1 rounded",
+                        "hover:opacity-90 cursor-pointer",
+                        "flex items-center gap-1"
                       )}
-                      style={{ 
-                        backgroundColor: getEventColor(event),
-                        color: '#ffffff',
-                        backdropFilter: 'blur(4px)',
-                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
-                      }}
+                      style={getEventStyle(event)}
                       onClick={(e) => {
                         e.stopPropagation();
                         onEventClick(event);
                       }}
                     >
-                      <div className="flex items-center gap-1">
-                        {event.source === 'teams' && (
-                          <Video className="h-3 w-3" />
-                        )}
-                        <span className="truncate">
-                          {format(new Date(event.start), 'h:mm a')} - {event.title}
-                        </span>
-                      </div>
-                      {event.location && (
-                        <div className="flex items-center gap-1 text-[10px] mt-0.5">
-                          <MapPin className="h-2 w-2" />
-                          <span className="truncate">{event.location}</span>
-                        </div>
-                      )}
+                      <span className="truncate flex-1">
+                        {format(new Date(event.start), 'HH:mm')} {event.title}
+                      </span>
+                      {event.isOnline && <Link2 className="h-3 w-3 flex-shrink-0" />}
                     </div>
                   ))
                 ) : (
-                  <div className="text-xs text-muted-foreground pl-1">
+                  <div className="text-xs text-gray-400 dark:text-gray-600 pl-1">
                     No events
                   </div>
                 )}
