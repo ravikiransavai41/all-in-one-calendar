@@ -87,33 +87,52 @@ const CreateEventDialog: React.FC<CreateEventDialogProps> = ({
           const createdEvent = await createMsCalendarEvent(newEvent);
           onCreateEvent(createdEvent);
           toast.success(`Event created in Microsoft ${isTeamsMeeting ? 'Teams' : 'Outlook'}`);
-        } catch (error) {
+          onClose();
+          
+          // Reset form
+          setTitle('');
+          setDescription('');
+          setLocation('');
+          setStartDate(format(defaultDate, 'yyyy-MM-dd'));
+          setStartTime(format(defaultDate, 'HH:mm'));
+          setEndDate(format(defaultDate, 'yyyy-MM-dd'));
+          setEndTime(format(defaultDate, 'HH:mm'));
+          setIsAllDay(false);
+          setIsTeamsMeeting(false);
+          setAttendees('');
+        } catch (error: any) {
           console.error('Error creating event in Microsoft:', error);
-          toast.error('Failed to create event in Microsoft. Creating locally instead.');
-          onCreateEvent(newEvent);
+          
+          // Handle specific error cases
+          if (error.message?.includes('Authentication')) {
+            toast.error('Authentication error. Please sign in again.');
+          } else if (error.message?.includes('Rate limit')) {
+            toast.error('Too many requests. Please wait a moment and try again.');
+          } else {
+            toast.error('Failed to create event in Microsoft. Please try again.');
+          }
         }
       } else {
         // Create event locally
         onCreateEvent(newEvent);
         toast.success('Event created locally');
+        onClose();
+        
+        // Reset form
+        setTitle('');
+        setDescription('');
+        setLocation('');
+        setStartDate(format(defaultDate, 'yyyy-MM-dd'));
+        setStartTime(format(defaultDate, 'HH:mm'));
+        setEndDate(format(defaultDate, 'yyyy-MM-dd'));
+        setEndTime(format(defaultDate, 'HH:mm'));
+        setIsAllDay(false);
+        setIsTeamsMeeting(false);
+        setAttendees('');
       }
-      
-      onClose();
-      
-      // Reset form
-      setTitle('');
-      setDescription('');
-      setLocation('');
-      setStartDate(format(defaultDate, 'yyyy-MM-dd'));
-      setStartTime(format(defaultDate, 'HH:mm'));
-      setEndDate(format(defaultDate, 'yyyy-MM-dd'));
-      setEndTime(format(defaultDate, 'HH:mm'));
-      setIsAllDay(false);
-      setIsTeamsMeeting(false);
-      setAttendees('');
     } catch (error) {
       console.error('Error creating event:', error);
-      toast.error('Failed to create event');
+      toast.error('Failed to create event. Please try again.');
     } finally {
       setIsCreating(false);
     }
